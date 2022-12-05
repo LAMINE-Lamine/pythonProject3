@@ -11,26 +11,31 @@ def execute_cmd(cmd):
 #    return ret
     return f"J'ai exécuté {cmd}"
 
+def hostname():
+    cmd=socket.gethostname()
+    return cmd
 
 def ipconfig():
-    cmd = str(subprocess.check_output("ipconfig",shell=True))
+    host=socket.gethostname()
+    cmd = socket.gethostbyname(host)
+    #cmd = subprocess.Popen("ipconfig",encoding='cp850',shell=True)
     return cmd
 
 
 def ram():
-    cmd = str(subprocess.check_output("wmic computersystem get totalphysicalmemory.", shell=True))
+    cmd = subprocess.check_output("wmic computersystem get totalphysicalmemory.", shell=True).decode()
     return cmd
 
 def Os():
     cmd=sys.platform
     if cmd == "win32":
-        cmd = str(subprocess.check_output("ver", shell=True))
+        cmd = subprocess.check_output("ver", shell=True).decode()
         return cmd
     else:
         return cmd
 
 def cpu ():
-    cmd = str(subprocess.check_output("wmic cpu get caption, deviceid, name, numberofcores, maxclockspeed, status", shell=True))
+    cmd = subprocess.check_output("wmic cpu get caption, deviceid, name, numberofcores, maxclockspeed, status", shell=True).decode()
     return cmd
 
 
