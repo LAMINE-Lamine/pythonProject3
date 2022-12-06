@@ -3,13 +3,14 @@ import os
 import sys , subprocess
 
 host = "127.0.0.1"
-port = 5000
+port = int(input("port:"))
 
-
+########
 def execute_cmd(cmd):
 #    ret = str(subprocess.check_output(cmd, shell=True, stderr=subprocess.STDOUT))
 #    return ret
-    return f"J'ai exécuté {cmd}"
+    return #f"J'ai exécuté {cmd}"
+
 
 def hostname():
     cmd=socket.gethostname()
@@ -23,7 +24,7 @@ def ipconfig():
 
 
 def ram():
-    cmd = subprocess.check_output("wmic computersystem get totalphysicalmemory.", shell=True).decode()
+    cmd = subprocess.check_output("wmic MEMORYCHIP get BankLabel, DeviceLocator, Capacity, Speed", shell=True).decode()
     return cmd
 
 def Os():
@@ -117,7 +118,7 @@ def server_socket():
                     # DOS:dir ou linux:dir
                     # dir
                     message = execute_cmd(data)
-                    conn.send(message.encode())  # SEND
+                    #conn.send(message.encode())  # SEND
                     print(f"J'ai envoyé un message {message}")
 
             conn.close() # fermeture avec le client
