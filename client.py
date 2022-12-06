@@ -1,11 +1,54 @@
+
+
 from socket import AF_INET, SOCK_STREAM , socket
 from threading import Thread
 import sys
-from PyQt5.QtWidgets import QApplication, QWidget, QGridLayout, QLabel, QLineEdit, QPushButton, QMainWindow, QComboBox, QDialog, QMessageBox, QTabWidget, QVBoxLayout, QPlainTextEdit
+from PyQt5.QtWidgets import QApplication, QWidget, QGridLayout, QLabel, QLineEdit, QPushButton, QMainWindow, QComboBox, \
+    QDialog, QMessageBox, QTabWidget, QVBoxLayout, QPlainTextEdit, QScrollArea
 from PyQt5.QtCore import QCoreApplication
 from PyQt5.QtCore import QObject, QThread, pyqtSignal
 import time
 from PyQt5.QtCore import Qt
+from PyQt5 import QtWidgets
+
+
+
+class ScrollLabel(QScrollArea):
+
+    # constructor
+    def __init__(self, *args, **kwargs):
+        QScrollArea.__init__(self, *args, **kwargs)
+
+        # making widget resizable
+        self.setWidgetResizable(True)
+
+        # making qwidget object
+        content = QWidget(self)
+        self.setWidget(content)
+
+        # vertical box layout
+        lay = QVBoxLayout(content)
+
+        # creating label
+        self.label = QLabel(content)
+
+        # setting alignment to the text
+        self.label.setAlignment(Qt.AlignLeft | Qt.AlignTop)
+
+        # making label multi-line
+        self.label.setWordWrap(True)
+
+        # adding label to the layout
+        lay.addWidget(self.label)
+
+    # the setText method
+    def setText(self, text):
+        # setting text to the label
+        self.label.setText(text)
+
+    def text(self):
+        return self.label.text()
+
 
 
 def combobox():
@@ -24,11 +67,12 @@ class MainWindow(QMainWindow):
         grid = QGridLayout()
         widget.setLayout(grid)
 
+
         self.__cb = QComboBox()
         self.__port = QLineEdit("")
         self.__ip = QLineEdit("")
         self.__repons = QLineEdit("")
-        self.__terminous= QLabel("Message:")
+        self.__terminous=ScrollLabel()
         self.__terminous.setStyleSheet("border:1px solid #000")
 
 
@@ -148,4 +192,3 @@ if __name__ == '__main__':
     window = MainWindow()
     window.show()
     app.exec()
-
