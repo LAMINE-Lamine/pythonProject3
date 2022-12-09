@@ -1,18 +1,17 @@
 import socket
 import os
 import sys , subprocess
+import psutil
+
+
 
 host = "127.0.0.1"
 port = int(input("port:"))
 
 ########
-def execute_cmd(cmd):
-#    ret = str(subprocess.check_output(cmd, shell=True, stderr=subprocess.STDOUT))
-#    return ret
-    return #f"J'ai exécuté {cmd}"
 
 
-def hostname():
+def Hostname():
     cmd=socket.gethostname()
     return cmd
 
@@ -24,7 +23,7 @@ def ipconfig():
 
 
 def ram():
-    cmd = subprocess.check_output("wmic MEMORYCHIP get BankLabel, DeviceLocator, Capacity, Speed", shell=True).decode()
+    cmd= str(f"-La memoire total:{psutil.virtual_memory()[0]} octet\n-la memoire utiliser:{psutil.virtual_memory()[1]} octet\n-la memoire disponible:{psutil.virtual_memory()[4]} octet")
     return cmd
 
 def Os():
@@ -35,9 +34,23 @@ def Os():
     else:
         return cmd
 
-def cpu ():
-    cmd = subprocess.check_output("wmic cpu get caption, deviceid, name, numberofcores, maxclockspeed, status", shell=True).decode()
+import client
+def Ping (data):
+    cmd = subprocess.getoutput(data)
     return cmd
+
+
+def versionn():
+    cmd=str(subprocess.check_output("python --version", shell=True))
+    return cmd
+
+
+def cpu ():
+    cmd = str(f"CPU utiliser :{psutil.cpu_percent()}%")
+
+    return cmd
+
+
 
 
 
@@ -61,44 +74,88 @@ def server_socket():
                 data = conn.recv(1024).decode()#RECEIV
                 print(f"Data = {data}")
 
-                if data == 'ip':
+
+
+
+
+
+
+
+
+                if data.lower() == 'ip':
                     res = ipconfig()
                     conn.send(res.encode())
                     print(f'CA BIEN ETAIT FAIT IPPPPPP {res}')
 
-                elif data == 'sh cpu':
+                elif data.lower()=='hostname':
+                    res=Hostname()
+                    conn.send(res.encode())
+                    print(f'voici lhostname:{res}')
+
+
+                elif data.lower()[0:4] == "ping":
+                    res = Ping(data)
+                    conn.send(res.encode())
+                    print(f'voici le ping: {res}')
+
+
+                elif data[0:4] =="DOS:":
+                    re = data.split(':')[1]
+                    res = subprocess.check_output(re, shell=True).decode("cp850")
+                    conn.send(res.encode())
+                    print(f"voici{res}")
+
+
+                elif data[0:4] =="LINUX:":
+                    re = data.split(':')[1]
+                    res = subprocess.check_output(re, shell=True).decode("cp850")
+                    conn.send(res.encode())
+                    print(f"voici{res}")
+
+
+                elif data.lower()== 'cpu':
                     res = cpu()
                     conn.send(res.encode())
                     print(f'voici le cpu de la machine: {res}')
 
-                elif data == 'sh ram':
+                elif data.lower()== 'ram':
                     res = ram()
                     conn.send(res.encode())
                     print(f'voici la ram de la machine: {res}')
 
-                elif data == 'os':
+                elif data.lower()== 'os':
                     res = Os()
                     conn.send(res.encode())
                     print(f"on a l'OS {res}")
 
-                elif data == "bye" or data == "arret":
+                elif data.lower() == 'Ping':
+                    res = ping("")
+                    conn.send(res.encode())
+                    print(f"on fais le ping: {res}")
+
+                elif data.lower() == 'python --version':
+                    res = versionn()
+                    conn.send(res.encode())
+                    print(f"la version: {res}")
+
+                elif data.lower()== "bye" or data.lower()== "arret":
                     print ("fermeture du server ")
                     conn.send("arret".encode())
                     break
 
-                elif data == "disconnect":
+                elif data.lower()== "disconnect":
                     print ("deconnection du client au server")
                     conn.send("disconnect".encode())
                     break
 
                 #fonction kill
-                elif data == "kill":
+                elif data.lower()== "kill":
                     conn.send("disconnect".encode())
                     conn.close()
                     server.close()
                     sys.exit(0)
 
-                elif data == "reset":
+                elif data.lower()== "reset":
                     conn.send("reset".encode())
                     conn.close()
                     server.close()
@@ -109,17 +166,21 @@ def server_socket():
                     print("En attente d'un client")
                     break
 
-                elif data == "hello":
+                elif data.lower()== "hello":
                     message = "hello"
                     conn.send(message.encode())  # SEND
                     print(f"J'ai envoyé un message {message}")
 
                 else:
                     # DOS:dir ou linux:dir
-                    # dir
-                    message = execute_cmd(data)
-                    #conn.send(message.encode())  # SEND
+                    message="command invalide"
+                    conn.send(message.encode())
+
                     print(f"J'ai envoyé un message {message}")
+
+
+
+
 
             conn.close() # fermeture avec le client
 
