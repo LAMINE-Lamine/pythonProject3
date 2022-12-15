@@ -1,32 +1,10 @@
-from socket import AF_INET, SOCK_STREAM, socket
+from socket import socket
 from threading import Thread
 import sys
 
-import self as self
 from PyQt5.QtWidgets import QApplication, QWidget, QGridLayout, QLabel, QLineEdit, QPushButton, QMainWindow, QComboBox, \
-    QDialog, QMessageBox, QTabWidget, QVBoxLayout, QPlainTextEdit, QScrollArea, QTableWidget
-from PyQt5.QtCore import QCoreApplication
-from PyQt5.QtCore import QObject, QThread, pyqtSignal
-import time
-from PyQt5.QtCore import Qt
-from PyQt5 import QtWidgets
-
-
-class difserver():
-    app = QApplication(sys.argv)
-    root = QWidget()
-
-    # create a QTableWidget
-    self.__table = QTableWidget(root)
-    self.__table.setRowCount(2)
-    self.__table.setColumnCount(3)
-    self.__table.setGeometry(50, 50, 400, 200)
-
-    # adding header to the table
-    headerH = ['ID', 'Name', 'email']
-    headerV = ['a', 'b']
-    self.__table.setHorizontalHeaderLabels(headerH)
-    self.__table.setVerticalHeaderLabels(headerV)
+    QTabWidget, QVBoxLayout, QScrollArea, QMessageBox
+from PyQt5.QtCore import QCoreApplication, Qt
 
 
 class ScrollLabel(QScrollArea):
@@ -51,6 +29,8 @@ class ScrollLabel(QScrollArea):
         # setting alignment to the text
         self.label.setAlignment(Qt.AlignLeft | Qt.AlignTop)
 
+        self.verticalScrollBar().rangeChanged.connect(self.scroll)
+
         # making label multi-line
         self.label.setWordWrap(True)
 
@@ -65,118 +45,125 @@ class ScrollLabel(QScrollArea):
     def text(self):
         return self.label.text()
 
+    def scroll(self):
+        scrollbar = self.verticalScrollBar()
+        scrollbar.setValue(scrollbar.maximum())
+
 
 def combobox():
     pass
 
 
+class connection(QWidget):
+    def __init__(self, connection, parent):
+        super().__init__()
+        self.__layout = QGridLayout()
+        self.setLayout(self.__layout)
+        self.__connection = connection
+        self.__parent = parent
+        self.__stop = False
+        self.__terminous = ScrollLabel()
+        self.__terminous.setStyleSheet("margin:0;padding:0")
+        self.__commandinput = QLineEdit()
+        self.__commandinput.setPlaceholderText('INSERER COMMANDE')
+        self.__commandinput.returnPressed.connect(self.__send_message)
+        self.__layout.addWidget(self.__terminous, 0, 0)
+        self.__layout.addWidget(self.__commandinput, 1, 0)
+        self.__layout.setContentsMargins(0, 0, 0, 0)
+        self.__layout.setSpacing(0)
+        self.__threadecoute = Thread(target=self.__ecoute)
+        self.__threadecoute.start()
+
+    def __ecoute(self):
+        while not self.__parent.stopped() and not self.__stop:
+            try:
+                data = self.__connection.recv(1024).decode()
+                if data == 'disconnect' or data == 'reset':
+                    self.__close()
+                else:
+                    self.__terminous.setText(self.__terminous.text() + '\n' + data)
+            except:
+                pass
+
+    def __send_message(self):
+        command = self.__commandinput.text()
+        self.__commandinput.setText('')
+        self.__terminous.setText(self.__terminous.text() + '\nMoi > ' + command)
+        try:
+            self.__connection.send(command.encode())
+        except:
+            pass
+
+    def __close(self):
+        self.__stop = True
+        self.deleteLater()
+
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
-        self.ecoute = Thread(target=self.__threadecoute)
-
-        self.socket = socket()
+        self.__socket = socket()
         widget = QWidget()
         self.setCentralWidget(widget)
         grid = QGridLayout()
         widget.setLayout(grid)
-
         self.__cb = QComboBox()
-        self.__port = QLineEdit("")
-        self.__ip = QLineEdit("")
-        self.__repons = QLineEdit("")
-        self.__terminous = ScrollLabel()
-        self.__terminous.setStyleSheet("border:1px solid #000")
+        self.__port = QLineEdit("6000")
+        self.__ip = QLineEdit("127.0.0.1")
 
         self.__port.setPlaceholderText("Done port.")
         self.__ip.setPlaceholderText("done IP")
-        self.__repons.setPlaceholderText("ecris ton text")
 
         self.__ok = QPushButton("Ok")
         self.__envoi = QPushButton("envoi")
 
-        quit = QPushButton("Quitter")
         # Ajouter les composants au grid ayout
         # grid.addWidget(lab,0,1)
+        self.__stop = False
+        self.__tabwidget = QTabWidget()
         grid.addWidget(self.__port, 1, 2)
         grid.addWidget(self.__ip, 1, 1)
-        grid.addWidget(self.__repons, 2, 2)
-        grid.addWidget(self.__ok, 1, 0, 1, 1)  # ligne,colonne,hauteur,largueur
-        grid.addWidget(self.__envoi, 2, 0, 1, 1)  # ligne,colonne,hauteur,largueur
-        grid.addWidget(self.__terminous, 3, 0, 1, 3)
-
-        grid.addWidget(quit)
-
-        quit.clicked.connect(self.__actionQuitter)
-
+        grid.addWidget(self.__ok, 1, 0)  # ligne,colonne,hauteur,largueur
+        grid.addWidget(self.__tabwidget, 2, 0, 1, 3)
         self.__ok.clicked.connect(self.__lancement)
-        self.__envoi.clicked.connect(self.__envoimsg)
         self.setWindowTitle("Interface graphique")
 
     def __actionQuitter(self):
-        self.ecoute.join()
-        self.socket.close()
+        self.__stop = True
+        self.__socket.close()
         QCoreApplication.exit(0)
 
+    def stopped(self) -> bool:
+        return self.__stop
+
+    def closeEvent(self, event):
+        self.__actionQuitter()
+        event.accept()
+
     def __lancement(self):
-        try:
-            HOST = self.__ip.text()
-            PORT = int(self.__port.text())
-            self.socket.connect((HOST, PORT))
-            self.ecoute.start()
+        client_socket = socket()
+        HOST = self.__ip.text()
+        PORT = self.__port.text()
+        if PORT.isdigit():
+            PORT = int(PORT)
+            try:
+                client_socket.connect((HOST, PORT))
+                client_socket.setblocking(False)
+                tab = connection(client_socket, self)
+                self.__tabwidget.addTab(tab, str(HOST) + ':' + str(PORT))
+            except:
+                self.show_error(f'Erreur lors de la connection vers {HOST}:{PORT}')
+        else:
+            self.show_error('Veuillez insérer un numéro pour le port!')
 
-            self.__port.setHidden(True)
-            self.__ip.setHidden(True)
-            self.__ok.setHidden(True)
-
-
-            # if HOST!= self.__ip.text() and PORT!=int(self.__port.text()):
-            # print("erreur de connection port ou ip")
-
-
-
-        except:
-            self.show_error()
-
-
-           #except  :
-
-                      #  HOST = self.__ip.text()
-            #PORT = int(self.__port.text())
-                        #self.socket.connect((HOST, PORT))
-                        #self.ecoute.start()
-
-                        #self.__port.setHidden(True)
-                        #self.__ip.setHidden(True)
-                        #self.__ok.setHidden(True)"""
-
-
-    def show_error(self):
-        errorDialog = QtWidgets.QMessageBox()
-        errorDialog.setText('ERROR')
+    def show_error(self, err=None):
+        errorDialog = QMessageBox()
+        if err is not None:
+            errorDialog.setText(str(err))
+        else:
+            errorDialog.setText("Une erreur s'est produite")
         errorDialog.setWindowTitle('ERROR')
         errorDialog.exec_()
-
-    def __envoimsg(self):
-
-        message = self.__repons.text()
-        if message != "":
-            self.socket.send(message.encode())
-            self.__terminous.setText(self.__terminous.text() + "\nme -> " + message)
-            self.__repons.setText("")
-        if message == "disconnect" or message == "kill" or message == "reset":
-            self.__actionQuitter()
-
-    def __threadecoute(self):
-        while True:
-
-            data = self.socket.recv(1024).decode()
-            if len(data) == 0:
-                break
-            self.__terminous.setText(self.__terminous.text() + "\n" + data)
-            if data == "disconnect" or data == "kill" or data == "reset":
-                break
 
 
 if __name__ == '__main__':
@@ -185,3 +172,4 @@ if __name__ == '__main__':
     window.resize(800, 500)
     window.show()
     app.exec()
+
